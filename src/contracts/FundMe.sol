@@ -1,38 +1,47 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
-import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+// import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "./PriceConverter.sol";
 
 error NotOwner();
 
-contract FundMe{
+contract FundMe {
     using PriceConverter for uint;
 
     uint256 public constant MINIMUM_USD = 1 * 1e18;
     address public immutable i_owner;
     address[] public funders;
-    mapping (address => uint) public addressToAmountFunded;
+    mapping(address => uint) public addressToAmountFunded;
 
-    constructor(){
-         i_owner = msg.sender;
+    constructor() {
+        i_owner = msg.sender;
     }
 
     function fund() public payable {
-        require(msg.value.getConversionRate() >= MINIMUM_USD, "Didn't send Enough");  // 1e18 == 1 * 10 ** 18
+        require(
+            msg.value.getConversionRate() >= MINIMUM_USD,
+            "Didn't send Enough"
+        ); // 1e18 == 1 * 10 ** 18
         funders.push(msg.sender);
         addressToAmountFunded[msg.sender] += msg.value;
     }
 
-      function getPrice() public  view returns(uint) {
+    function getPrice() public view returns (uint) {
         // ABI
         // Address : 0x694AA1769357215DE4FAC081bf1f309aDC325306
-        AggregatorV3Interface priceFeed = AggregatorV3Interface(0x694AA1769357215DE4FAC081bf1f309aDC325306);
-        (, int price,,,) = priceFeed.latestRoundData();
+        AggregatorV3Interface priceFeed = AggregatorV3Interface(
+            0x694AA1769357215DE4FAC081bf1f309aDC325306
+        );
+        (, int price, , , ) = priceFeed.latestRoundData();
         return uint(price * 1e10);
     }
 
     function withdraw() public onlyOwner {
-        for(uint funderIndex = 0; funderIndex < funders.length; funderIndex++){
+        for (
+            uint funderIndex = 0;
+            funderIndex < funders.length;
+            funderIndex++
+        ) {
             address funder = funders[funderIndex];
             addressToAmountFunded[funder] = 0;
         }
@@ -50,36 +59,37 @@ contract FundMe{
 
         // call
         // without ABI Calling
-        (bool callSuccess, ) = payable(msg.sender).call{value: address(this).balance}("");
-        require(callSuccess, 'Call Failed!');
+        (bool callSuccess, ) = payable(msg.sender).call{
+            value: address(this).balance
+        }("");
+        require(callSuccess, "Call Failed!");
     }
 
-
-    modifier onlyOwner{
+    modifier onlyOwner() {
         // require(msg.sender == i_owner, "Sender is not owner!");
-        if(msg.sender != i_owner) {
+        if (msg.sender != i_owner) {
             revert NotOwner();
         }
         _;
     }
 
-   // Explainer from: https://solidity-by-example.org/fallback/
+    // Explainer from: https://solidity-by-example.org/fallback/
     // Ether is sent to contract
     //      is msg.data empty?
-    //          /   \ 
+    //          /   \
     //         yes  no
     //         /     \
-    //    receive()?  fallback() 
-    //     /   \ 
+    //    receive()?  fallback()
+    //     /   \
     //   yes   no
     //  /        \
     //receive()  fallback()
-    
+
     receive() external payable {
         fund();
-     }
+    }
 
-     fallback() external payable { 
+    fallback() external payable {
         fund();
-     }
+    }
 }
