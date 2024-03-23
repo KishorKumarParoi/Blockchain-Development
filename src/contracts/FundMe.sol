@@ -3,16 +3,18 @@ pragma solidity ^0.8.19;
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "./PriceConverter.sol";
 
+error NotOwner();
+
 contract FundMe{
     using PriceConverter for uint;
 
-    uint256 public constant MINIMUM_USD = 50 * 1e18;
-    address public owner;
+    uint256 public constant MINIMUM_USD = 1 * 1e18;
+    address public immutable i_owner;
     address[] public funders;
     mapping (address => uint) public addressToAmountFunded;
 
     constructor(){
-         owner = msg.sender;
+         i_owner = msg.sender;
     }
 
     function fund() public payable {
@@ -54,7 +56,30 @@ contract FundMe{
 
 
     modifier onlyOwner{
-        require(msg.sender == owner, "Sender is not owner!");
+        // require(msg.sender == i_owner, "Sender is not owner!");
+        if(msg.sender != i_owner) {
+            revert NotOwner();
+        }
         _;
     }
+
+   // Explainer from: https://solidity-by-example.org/fallback/
+    // Ether is sent to contract
+    //      is msg.data empty?
+    //          /   \ 
+    //         yes  no
+    //         /     \
+    //    receive()?  fallback() 
+    //     /   \ 
+    //   yes   no
+    //  /        \
+    //receive()  fallback()
+    
+    receive() external payable {
+        fund();
+     }
+
+     fallback() external payable { 
+        fund();
+     }
 }
