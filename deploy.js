@@ -8,8 +8,15 @@ async function main() {
     const binary = readFileSync("./SimpleStorage_sol_SimpleStorage.bin", "utf8");
     const contractFactory = new ContractFactory(abi, binary, wallet);
     console.log("Deploying, please wait...");
-    const contract = await contractFactory.deploy();
+    const contract = await contractFactory.deploy({ gasLimit: 1000000 });
     console.log(contract);
+
+    const transactionReceipt = await contract.deploymentTransaction.wait(1);
+    console.log('Here is the deployment transaction (transaction response) : ');
+    console.log(contract.deploymentTransaction);
+
+    console.log("Here is the transaction receipt");
+    console.log(transactionReceipt);
 }
 
 main();
